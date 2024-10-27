@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <openssl/hmac.h>
+#include <openssl/sha.h>
 #include "InfoGather.h"
 
 //Constructor

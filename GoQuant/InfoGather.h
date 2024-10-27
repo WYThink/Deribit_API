@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef _INFOGATHER_
-#define _INFOGATHER_
+#ifndef _-INFOGATHER__
+#define _-INFOGATHER__
 
 #include <iostream>
 
@@ -13,6 +13,9 @@ private:
 
 	//UserName & Password
 	std::string userName , password;
+
+	//Signature
+	const std::string *sigNature;
 
 public:
 
