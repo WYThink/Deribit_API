@@ -9,10 +9,10 @@ class infoGather
 {
 private:
 	//API Key
-	std::string apiKey;
+	std::string apiKey{};
 
 	//UserName & Password
-	std::string userName , password;
+	std::string clientID{};
 
 	//Signature
 	const std::string *sigNature;
@@ -21,9 +21,6 @@ public:
 
 	//Get API Key
 	void getAPIKey();
-
-	//Get Username & Password
-	void getUserPass();
 
 	//Constructor
 	infoGather();

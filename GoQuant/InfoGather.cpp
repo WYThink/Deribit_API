@@ -9,35 +9,21 @@ infoGather::infoGather()
 {
 	//calling getAPIKey()
 	getAPIKey();
-
-	//calling getUserPass()
-	getUserPass();
 }
 
 //Get API Key
 void infoGather::getAPIKey()
 {
 	//API Key Input
-	std::cout << "Enter your API Key: ";
+	std::cout << "Enter API Key: ";
 	std::getline(std::cin >> std::ws, apiKey);
+
+	//Client ID
+	std::cout << "Enter Client ID: ";
+	std::getline(std::cin >> std::ws, clientID);
 
 	//If Failed Take Input Again
 	getAPIKey();
-}
-
-//Get Username & Password
-void infoGather::getUserPass()
-{
-	//Get UserName
-	std::cout << "Enter your UserName: ";
-	std::getline(std::cin >> std::ws, userName);
-
-	//Get Password
-	std::cout << "Enter your Password: ";
-	std::getline(std::cin >> std::ws, password);
-
-	//If Failed Take Input Again
-	getUserPass();
 }
 
 //Destructor
