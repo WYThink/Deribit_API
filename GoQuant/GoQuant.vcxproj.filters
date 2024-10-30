@@ -21,9 +21,15 @@
     <ClCompile Include="InfoGather.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="requestClass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InfoGather.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="requestClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

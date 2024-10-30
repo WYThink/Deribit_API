@@ -1,7 +1,5 @@
 #include <iostream>
 #include <string>
-#include <openssl/hmac.h>
-#include <openssl/sha.h>
 #include "InfoGather.h"
 
 //Constructor
@@ -15,8 +13,8 @@ infoGather::infoGather()
 void infoGather::getAPIKey()
 {
 	//API Key Input
-	std::cout << "Enter API Key: ";
-	std::getline(std::cin >> std::ws, apiKey);
+	std::cout << "Enter Client Secret: ";
+	std::getline(std::cin >> std::ws, clientSecret);
 
 	//Client ID
 	std::cout << "Enter Client ID: ";
@@ -27,13 +25,13 @@ void infoGather::getAPIKey()
 }
 
 //Return API Key
-std::string_view infoGather::retApiKey()
+std::string infoGather::retClientSecret()
 {
-	return apiKey;
+	return clientSecret;
 }
 
 //Return Client ID
-std::string_view infoGather::retClientID()
+std::string infoGather::retClientID()
 {
 	return clientID;
 }

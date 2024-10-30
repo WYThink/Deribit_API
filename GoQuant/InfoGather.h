@@ -9,7 +9,7 @@ class infoGather
 {
 private:
 	//API Key
-	std::string apiKey{};
+	std::string clientSecret{};
 
 	//Client ID
 	std::string clientID{};
@@ -23,10 +23,10 @@ public:
 	void getAPIKey();
 
 	//Return API Key
-	std::string_view retApiKey();
+	std::string retClientSecret();
 
 	//Return Client ID
-	std::string_view retClientID();
+	std::string retClientID();
 
 	//Constructor
 	infoGather();
