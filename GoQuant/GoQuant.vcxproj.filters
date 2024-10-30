@@ -21,15 +21,9 @@
     <ClCompile Include="InfoGather.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="generateSignature.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InfoGather.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="generateSignature.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -23,7 +23,19 @@ void infoGather::getAPIKey()
 	std::getline(std::cin >> std::ws, clientID);
 
 	//If Failed Take Input Again
-	getAPIKey();
+	//getAPIKey();
+}
+
+//Return API Key
+std::string_view infoGather::retApiKey()
+{
+	return apiKey;
+}
+
+//Return Client ID
+std::string_view infoGather::retClientID()
+{
+	return clientID;
 }
 
 //Destructor

@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef _-INFOGATHER__
-#define _-INFOGATHER__
+#ifndef __INFOGATHER__
+#define __INFOGATHER__
 
 #include <iostream>
 
@@ -11,7 +11,7 @@ private:
 	//API Key
 	std::string apiKey{};
 
-	//UserName & Password
+	//Client ID
 	std::string clientID{};
 
 	//Signature
@@ -21,6 +21,12 @@ public:
 
 	//Get API Key
 	void getAPIKey();
+
+	//Return API Key
+	std::string_view retApiKey();
+
+	//Return Client ID
+	std::string_view retClientID();
 
 	//Constructor
 	infoGather();
