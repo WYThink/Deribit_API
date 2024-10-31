@@ -15,6 +15,9 @@ void requestClass::bse64StringConstruct(std::string_view clientID, std::string_v
 	
 	//Setting Value
 	bse64IDSecret = bse64STR;
+
+	//Setting Authorization Header
+	authorizationHeader = "Authorization: " + bse64IDSecret;
 }
 
 //Return Encoded String
@@ -27,6 +30,12 @@ const std::string requestClass::encoded_BSE64_String()
 const std::string requestClass::decoded_BSE64_String()
 {
 	return (std::string)base64::from_base64(bse64IDSecret);
+}
+
+//Return Authorization Header
+const std::string requestClass::retAuthorizationHeader()
+{
+	return authorizationHeader;
 }
 
 //Destructor

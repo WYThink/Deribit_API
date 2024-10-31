@@ -13,6 +13,9 @@ private:
 	//Storing Encoded ID & Secret
 	std::string bse64IDSecret{};
 
+	//Authorization Header
+	std::string authorizationHeader{};
+
 public:
 	//bse64 String Construct
 	void bse64StringConstruct(std::string_view clientID, std::string_view clientSecret);
@@ -22,6 +25,9 @@ public:
 
 	//Return base64 Decoded ClientID & Client Secret String
 	const std::string decoded_BSE64_String();
+
+	//Return Authorization Header
+	const std::string retAuthorizationHeader();
 	
 	//Constructor
 	requestClass();
