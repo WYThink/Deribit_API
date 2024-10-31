@@ -19,9 +19,6 @@ void infoGather::getAPIKey()
 	//Client ID
 	std::cout << "Enter Client ID: ";
 	std::getline(std::cin >> std::ws, clientID);
-
-	//If Failed Take Input Again
-	//getAPIKey();
 }
 
 //Return API Key
@@ -34,6 +31,18 @@ std::string infoGather::retClientSecret()
 std::string infoGather::retClientID()
 {
 	return clientID;
+}
+
+//Return Address of clientID
+const std::string* infoGather::retAddrclientID()
+{
+	return &clientID;
+}
+
+//Return Address of clientSecret
+const std::string* infoGather::retAddrclientSecret()
+{
+	return &clientSecret;
 }
 
 //Destructor

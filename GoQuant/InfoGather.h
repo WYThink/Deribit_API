@@ -28,6 +28,12 @@ public:
 	//Return Client ID
 	std::string retClientID();
 
+	//Return Address of clientID
+	const std::string* retAddrclientID();
+	
+	//Return Address of clientSecret
+	const std::string* retAddrclientSecret();
+
 	//Constructor
 	infoGather();
 
