@@ -4,14 +4,6 @@
 #include "InfoGather.h"
 #include "authenticateClass.h"
 
-using json = nlohmann::json;
-
-size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response) {
-	size_t totalSize = size * nmemb;
-	response->append((char*)contents, totalSize);
-	return totalSize;
-}
-
 int main()
 {
 	//Global Preparation , calling CURL_GLOBAL_INIT() Function
@@ -26,14 +18,13 @@ int main()
 
 	if (curl)
 	{
-
 		//InfoGather Object
 		infoGather* obj1 = new infoGather();
 		std::cout << "Client Secret Key : " << obj1->retClientSecret() << '\n';
 		std::cout << "Client ID : " << obj1->retClientID() << '\n';
 
 		//requestClass Object
-		authenticateClass* obj2 = new authenticateClass(&curl , obj1->retAddrclientID() , obj1->retAddrclientSecret());
+		authenticateClass* obj2 = new authenticateClass(curl , obj1->retAddrclientID() , obj1->retAddrclientSecret());
 
 		//Destroy Object
 		delete obj1;

@@ -9,36 +9,36 @@
 class authenticateClass
 {
 private:
-	//Client ID & Secret
-	std::string clientID{}, clientSecret{};
+    // Client ID & Secret
+    std::string clientID{}, clientSecret{};
 
-	//Authorization Header
-	std::string authorizationHeader{};
+    // Authorization Header
+    std::string authorizationHeader{};
 
-	//JSON String
-	std::string jsonString{};
+    // JSON String
+    std::string jsonString{};
 
-	//Pointer to Curl
-	CURL* curl;
+    //JSON Response
+    std::string jsonResponse{};
 
-	//Headers Struct
-	struct curl_slist* headers{ NULL };
+    // Pointer to Curl
+    CURL* curl;
+
+    // Headers Struct
+    struct curl_slist* headers{ NULL };
 
 public:
-	//Get ClientID & ClientSecret
-	void getClientIDSecret();
+    // Get Access Token From Server
+    void getAccessTokenFromServer();
 
-	//Get Access Token From Server
-	void getAccessTokenFromServer();
+    // Callback (make it static)
+    static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp);
 
-	//CallBack
-	size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {};
+    // Constructor
+    authenticateClass(CURL* obj, const std::string* cliID, const std::string* cliSecret);
 
-	//Constructor
-	authenticateClass(CURL* obj , const std::string* cliID , const std::string* cliSecret);
-
-	//Destructor
-	~authenticateClass();
+    // Destructor
+    ~authenticateClass();
 };
 
 #endif // __AUTHCLASS__

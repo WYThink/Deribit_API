@@ -12,13 +12,13 @@ infoGather::infoGather()
 //Get API Key
 void infoGather::getAPIKey()
 {
-	//API Key Input
-	std::cout << "Enter Client Secret: ";
-	std::getline(std::cin >> std::ws, clientSecret);
-
 	//Client ID
 	std::cout << "Enter Client ID: ";
 	std::getline(std::cin >> std::ws, clientID);
+	
+	//API Key Input
+	std::cout << "Enter Client Secret: ";
+	std::getline(std::cin >> std::ws, clientSecret);
 }
 
 //Return API Key

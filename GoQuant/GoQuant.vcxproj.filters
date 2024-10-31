@@ -21,7 +21,7 @@
     <ClCompile Include="InfoGather.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="requestClass.cpp">
+    <ClCompile Include="authenticateClass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -29,7 +29,7 @@
     <ClInclude Include="InfoGather.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="requestClass.h">
+    <ClInclude Include="authenticateClass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
