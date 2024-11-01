@@ -25,7 +25,12 @@ int main()
 		
 		//Get Instrument Name
 		obj2->getInstrumentFromAPI();
+
+		//Get Order Book
 		obj2->getOrderBookFromAPI();
+
+		//Get Currencies
+		obj2->getCurrenciesFromAPI();
 
 		//Destroy Object
 		delete obj1;

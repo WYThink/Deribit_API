@@ -7,6 +7,12 @@
 // Alias
 using json = nlohmann::json;
 
+// Callback Function
+size_t authenticateClass::WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
+    userp->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
+
 // Get Access Token From Server
 void authenticateClass::getAccessTokenFromServer()
 {
@@ -38,18 +44,19 @@ void authenticateClass::getAccessTokenFromServer()
     //try and catch block
     try
     {
-        // CURL Setup
-        curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/auth");
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-
         // Headers
         headers = curl_slist_append(headers, "Content-Type: application/json");
-
-        // JSON String as Post Data
+        
+        // CURL Setup
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/auth");
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
-        // Setup Callback Function
+        //CallBack Function
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+
+        //Specifing Buffer
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
         // Perform the Request
@@ -116,12 +123,6 @@ void authenticateClass::getAccessTokenFromServer()
     }
 }
 
-// Callback (made static)
-size_t authenticateClass::WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
-    userp->append((char*)contents, size * nmemb);
-    return size * nmemb;
-}
-
 //Get Instrument From API
 void authenticateClass::getInstrumentFromAPI()
 {
@@ -158,12 +159,16 @@ void authenticateClass::getInstrumentFromAPI()
     std::string authoHeader = "Authorization: Bearer " + accessToken;
     headers = curl_slist_append(headers, authoHeader.c_str());
 
-    //CURL Setup
+    //CURL Field Setup
     curl_easy_setopt(curl , CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl , CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_instruments");
     curl_easy_setopt(curl , CURLOPT_POSTFIELDS, jsonData.c_str());
-    curl_easy_setopt(curl , CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl , CURLOPT_WRITEDATA, &readBuffer);
+    
+    //CallBack Function
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+
+    //Specifing Buffer
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
     //Perform Operation
     res = curl_easy_perform(curl);
@@ -232,11 +237,15 @@ void authenticateClass::getOrderBookFromAPI()
     std::string authHeader = "Authorization: Bearer " + accessToken;
     headers = curl_slist_append(headers, authHeader.c_str());
 
-    //CURL Setup
+    //CURL Field Setup
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_order_book");
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+    
+    //CallBack Function
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+
+    //Specifing Buffer
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
     //Perform Request
@@ -280,6 +289,105 @@ void authenticateClass::getOrderBookFromAPI()
     if (headers)
     {
         //Free the Header List
+        curl_slist_free_all(headers);
+        headers = nullptr;
+    }
+}
+
+// Get Currencies
+void authenticateClass::getCurrenciesFromAPI()
+{
+    //CURL Status Code
+    CURLcode res;
+
+    //Read Buffer
+    std::string readBuffer{};
+
+    //Reset Header
+    if (headers)
+    {
+        //Free The Headers List
+        curl_slist_free_all(headers);
+    }
+
+    //JSON Object
+    json root;
+
+    //JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+    root["method"] = "/public/get_currencies";
+
+    //JSON to String
+    std::string jsonData = root.dump();
+
+    //CURL Header Setup
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    //CURL Field Setup
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_currencies");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+
+    //CallBack Function
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    
+    //Specifing Buffer
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+    try
+    {
+        //Perform Request
+        res = curl_easy_perform(curl);
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Error : " << e.what() << '\n';
+    }
+
+    if (res != CURLE_OK)
+    {
+        std::cerr << "curl_easy_perform() Failed" << curl_easy_strerror(res) << std::endl;
+    }
+    else
+    {
+        try
+        {
+            //Parsing JSON Type Response
+            json response = json::parse(readBuffer);
+
+            //Print Response
+            std::cout << response.dump(3) << std::endl;
+
+            //Total Currencies
+            int totalCurrency{};
+
+            if (response.contains("result"))
+            {
+                std::cout << std::endl << "<----------------- Currencies ----------------->" << std::endl;
+                for (const auto& item : response["result"])
+                {
+                    std::cout << "Currency \t: " << item["currency"] << std::endl;
+                    std::cout << "Currency Long \t: " << item["currency_long"] << std::endl;
+                    std::cout << std::endl;
+
+                    totalCurrency += 1;
+                }
+                std::cout << "Total Currency : " << totalCurrency << std::endl;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << "Error : " << e.what() << '\n';
+        }
+    }
+
+    //Reset Headers
+    if (headers)
+    {
+        //Free Headers List
         curl_slist_free_all(headers);
         headers = nullptr;
     }

@@ -47,6 +47,9 @@ public:
     // Get Order Book
     void getOrderBookFromAPI();
 
+    // Get Currencies
+    void getCurrenciesFromAPI();
+
     // Constructor
     authenticateClass(CURL* obj, infoGather* sharedObj, const std::string* cliID, const std::string* cliSecret);
 
