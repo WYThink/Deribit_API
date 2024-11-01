@@ -20,17 +20,16 @@ void authenticateClass::getAccessTokenFromServer()
     json tmpObj;
 
     // Create JSON Payload
-    json root;
-    json params;
+    json root , params;
 
     // JSON Payload
     root["jsonrpc"] = "2.0";
-    root["id"] = 9929;
+    root["id"] = 9940;
     root["method"] = "public/auth";
 
     params["grant_type"] = "client_credentials";
-    params["client_id"] = clientID;
-    params["client_secret"] = clientSecret;
+    params["client_id"] = *clientID;
+    params["client_secret"] = *clientSecret;
     root["params"] = params;
 
     // JSON String
@@ -39,8 +38,8 @@ void authenticateClass::getAccessTokenFromServer()
     //try and catch block
     try
     {
-        //CURL Setup
-        curl_easy_setopt(curl, CURLOPT_URL, "https://www.deribit.com/api/v2/public/auth");
+        // CURL Setup
+        curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/auth");
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
         // Headers
@@ -71,11 +70,49 @@ void authenticateClass::getAccessTokenFromServer()
         //Convert To JSON Object
         tmpObj = json::parse(readBuffer);
 
+        //Check for "Invalid Credentials"
+        if (tmpObj.contains("error") && tmpObj["error"].contains("code") && tmpObj["error"].contains("message")) {
+
+            //Error Code
+            std::string errorCode{};
+
+            //Check if code is a String or Number
+            if (tmpObj["error"]["code"].is_number())
+            {
+                errorCode = std::to_string(tmpObj["error"]["code"].get<int>());
+            }
+            else if (tmpObj["error"]["code"].is_string())
+            {
+                errorCode = tmpObj["error"]["code"].get<std::string>();
+            }
+
+            //Check for Invalid Credentials
+            if (errorCode == "13004" && "invalid_credentials" == tmpObj["error"]["message"].get<std::string>())
+            {
+                std::cout << "Invalid Credentials!! Please try again" << std::endl;
+
+                // Call getAPIKey() for New Input
+                infoGatherSharedObject->getAPIKey();
+                
+                //Call getAccessTokenFromServer()
+                getAccessTokenFromServer();
+            }
+        }
+
         //Store the Response
         jsonResponse = tmpObj.dump();
 
-        //Print Response
-        std::cout << "Response : " << tmpObj.dump(2) << std::endl;
+        //Store & Print Access Token
+        accessToken = tmpObj["result"]["access_token"].get<std::string>();
+        std::cout << "Access Token : " << accessToken << '\n';
+
+        //Reset Feature
+        if (headers)
+        {
+            //Reset Headers
+            curl_slist_free_all(headers);
+            headers = nullptr;
+        }
     }
 }
 
@@ -85,11 +122,175 @@ size_t authenticateClass::WriteCallback(void* contents, size_t size, size_t nmem
     return size * nmemb;
 }
 
+//Get Instrument From API
+void authenticateClass::getInstrumentFromAPI()
+{
+    //CURL Status Code
+    CURLcode res;
+
+    //Read Buffer
+    std::string readBuffer{};
+
+    //Reset headers
+    if (headers)
+    {
+        curl_slist_free_all(headers);
+    }
+
+    // Create JSON Payload
+    json root;
+
+    // JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+    root["method"] = "public/get_instruments";
+    
+    root["params"] = {
+        {"currency", "ETH"},
+        {"kind", "spot"}
+    };
+
+    // Convert JSON to string
+    std::string jsonData = root.dump();
+
+    // Headers
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    std::string authoHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authoHeader.c_str());
+
+    //CURL Setup
+    curl_easy_setopt(curl , CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl , CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_instruments");
+    curl_easy_setopt(curl , CURLOPT_POSTFIELDS, jsonData.c_str());
+    curl_easy_setopt(curl , CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl , CURLOPT_WRITEDATA, &readBuffer);
+
+    //Perform Operation
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        std::cerr << "curl_easy_perform() Failed: " << curl_easy_strerror(res) << std::endl;
+    }
+    else {
+        // Parse the response
+        json response = json::parse(readBuffer);
+
+        // Check if 'result' is present in the response
+        if (response.contains("result")) {
+            std::cout << std::endl <<"<------------------ Instrument Name ------------------>" << std::endl;
+            for (const auto& instrument : response["result"]) {
+                std::cout << "Instrument Name: " << instrument["instrument_name"] << std::endl;
+            }
+        }
+        else {
+            std::cerr << "No result found in the response." << std::endl;
+        }
+    }
+
+    if (headers)
+    {
+        // Free the headers list after the request
+        curl_slist_free_all(headers);
+        headers = nullptr;
+    }
+}
+
+// Get Order Book
+void authenticateClass::getOrderBookFromAPI()
+{
+    //CURL Status Code
+    CURLcode res;
+
+    //Read Buffer
+    std::string readBuffer{};
+
+    //Reset Header
+    if (headers)
+    {
+        curl_slist_free_all(headers);
+        headers = nullptr;
+    }
+
+    //JSON Object
+    json root;
+
+    //JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+    root["method"] = "/public/get_order_book";
+
+    root["params"] = {
+        {"instrument_name" , "BTC-PERPETUAL"},
+        {"depth" , 5}
+    };
+
+    //JSON to String
+    std::string jsonData = root.dump();
+
+    //Headers
+    headers = curl_slist_append(headers , "Content-Type: application/json");
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    //CURL Setup
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_order_book");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+    //Perform Request
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK)
+    {
+        std::cerr << "curl_easy_perform() Failed" << curl_easy_strerror(res) << std::endl;
+    }
+    else
+    {
+        try
+        {
+            //Parse The Response
+            json response = json::parse(readBuffer);
+
+            // Check if 'result' is present in the response
+            if (response.contains("result") && response["result"].contains("bids")) {
+                std::cout << std::endl << "<----------------- Bids ----------------->" << std::endl;
+
+                // Iterate over each bid in the "bids" array
+                for (const auto& bid : response["result"]["bids"]) {
+                    if (bid.size() == 2) {
+                        double price = bid[0];
+                        double quantity = bid[1];
+                        std::cout << "Price: " << price << "\t, Quantity: " << quantity << std::endl;
+                    }
+                }
+            }
+            else {
+                std::cout << "'bids' not found in the response." << std::endl;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << "Error : " << e.what() << '\n';
+        }
+    }
+
+    //Reset Headers
+    if (headers)
+    {
+        //Free the Header List
+        curl_slist_free_all(headers);
+        headers = nullptr;
+    }
+}
+
 // Constructor
-authenticateClass::authenticateClass(CURL* obj, const std::string* cliID, const std::string* cliSecret) :
+authenticateClass::authenticateClass(CURL* obj , infoGather* sharedObj, const std::string* cliID, const std::string* cliSecret) :
     curl{ obj },
-    clientID{ *cliID },
-    clientSecret{ *cliSecret }
+    infoGatherSharedObject{sharedObj},
+    clientID{ cliID },
+    clientSecret{ cliSecret }
 {
     // Calling getAccessTokenFromServer()
     getAccessTokenFromServer();
@@ -98,6 +299,6 @@ authenticateClass::authenticateClass(CURL* obj, const std::string* cliID, const 
 // Destructor
 authenticateClass::~authenticateClass()
 {
+    //Clean Up
     curl_easy_cleanup(curl);
-    curl_slist_free_all(headers);
 }

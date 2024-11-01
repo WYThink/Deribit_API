@@ -11,7 +11,6 @@ int main()
 
 	//CURL Handle
 	CURL* curl;
-	std::string response;
 
 	//Curl easy initialization
 	curl = curl_easy_init();
@@ -20,11 +19,13 @@ int main()
 	{
 		//InfoGather Object
 		infoGather* obj1 = new infoGather();
-		std::cout << "Client Secret Key : " << obj1->retClientSecret() << '\n';
-		std::cout << "Client ID : " << obj1->retClientID() << '\n';
 
 		//requestClass Object
-		authenticateClass* obj2 = new authenticateClass(curl , obj1->retAddrclientID() , obj1->retAddrclientSecret());
+		authenticateClass* obj2 = new authenticateClass(curl , obj1 , obj1->retAddrclientID() , obj1->retAddrclientSecret());
+		
+		//Get Instrument Name
+		obj2->getInstrumentFromAPI();
+		obj2->getOrderBookFromAPI();
 
 		//Destroy Object
 		delete obj1;
