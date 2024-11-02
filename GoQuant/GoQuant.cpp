@@ -46,7 +46,6 @@ int main()
 			std::cin >> choice;
 			if (std::cin.fail())
 			{
-				std::cin.clear();
 				ignoreLine();
 				std::cout << "Invalid Input. Please Enter Again" << std::endl;
 			}

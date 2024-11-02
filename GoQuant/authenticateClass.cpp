@@ -7,6 +7,8 @@
 #include "authenticateClass.h"
 #include "curl/curl.h"
 
+void ignoreLine();
+
 // Alias
 using json = nlohmann::json;
 
@@ -480,54 +482,111 @@ void authenticateClass::getCurrenciesFromAPI()
 // Buy Instrument
 void authenticateClass::buyOrderForInstrument()
 {
-    //CURL Status Code
+    // CURL Status Code
     CURLcode res;
 
-    //Read Buffer
+    // Read Buffer
     std::string readBuffer{};
 
-    //JSON Object
+    // Input Instrument Name
+    std::string instrumentNameInput{};
+    std::cout << "Enter Instrument Name: ";
+    std::getline(std::cin >> std::ws, instrumentNameInput);
+    if (std::cin.fail()) ignoreLine();
+
+    // Input Amount
+    int amount{};
+    std::cout << "Enter Amount: ";
+    std::cin >> amount;
+    if (std::cin.fail()) ignoreLine();
+
+    std::cout << "\n<------------------ Input Type ------------------>\n";
+
+    // Print Input Types
+    for (const auto& input : typeBuffer) {
+        std::cout << input << '\n';
+    }
+    std::cout << std::endl;
+
+    // Input Type
+    std::string typeInput{};
+    std::cout << "Enter Type (e.g., future, option, spot): ";
+    std::cin >> typeInput;
+    if (std::cin.fail()) ignoreLine();
+
+    // JSON Object
     json root;
 
-    //JSON Payload
+    // JSON Payload
     root["jsonrpc"] = "2.0";
     root["id"] = 9940;
     root["method"] = "/private/buy";
-
     root["params"] = {
-        {"amount" , 5},
-        {"instrument_name" , "ETH-PERPETUAL"},
-        {"label" , "market0511"},
-        {"type" , "market"}
+        {"amount", amount},
+        {"instrument_name", instrumentNameInput.c_str()},
+        {"label", "market0511"},
+        {"type", typeInput.c_str()}
     };
 
-    //JSON to String
+    // Convert JSON to String
     std::string jsonString = root.dump();
 
-    //CURL Headers Setup
+    // CURL Headers Setup
     headers = curl_slist_append(headers, "Content-Type: application/json");
     std::string authHeader = "Authorization: Bearer " + accessToken;
     headers = curl_slist_append(headers, authHeader.c_str());
 
-    //Calling curlRequest()
+    // Calling curlRequest()
     curlRequest(&readBuffer, jsonString, "https://test.deribit.com/api/v2/private/buy", &res);
 
-    if (res != CURLE_OK)
+    if (res != CURLE_OK) 
     {
-        std::cerr << "curl_easy_perform() Failed" << curl_easy_strerror(res) << std::endl;
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
     }
-
-    else
+    else 
     {
+        // Convert Response to JSON Format
         json response = json::parse(readBuffer);
-
         std::cout << "buyOrderForInstrument() Result" << std::endl;
-        //std::cout << response.dump(3) << '\n';
+
+        // Check for Errors
+        if (response.contains("error")) {
+            if (response["error"]["data"]["param"] == "instrument_name") 
+            {
+                std::cout << "Invalid \"Instrument Name\". Please Try Again" << std::endl;
+            }
+            else if (response["error"]["data"]["param"] == "type") 
+            {
+                std::cout << "Invalid \"Type Name\". Please Try Again" << std::endl;
+            }
+            else if (response["error"]["data"]["param"] == "amount") {
+                std::cout << "Invalid \"Amount\". Please Try Again" << std::endl;
+            }
+            else 
+            {
+                std::cout << "Error occurred while placing order. Please try again." << std::endl;
+            }
+            freeCURLHeaders();
+            return;
+        }
+
+        // Check for Order Result
+        if (response.contains("result")) {
+            if (response["result"].contains("order") && response["result"]["order"]["order_state"] == "filled") 
+            {
+                std::cout << "\nOrder was successful and filled." << std::endl;
+            }
+            else 
+            {
+                std::cout << "Order was not successful or is in a different state." << std::endl;
+            }
+        }
     }
 
-    //calling freeCURLHeaders()
+    // Calling freeCURLHeaders()
     freeCURLHeaders();
 }
+
 
 //Get Current Positions
 void authenticateClass::getCurrentPositions()

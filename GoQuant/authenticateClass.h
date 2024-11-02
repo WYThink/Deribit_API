@@ -22,6 +22,9 @@ private:
     //Kind Buffer
     std::vector<std::string> kindBuffer{ "future" , "option" , "spot" , "future_combo" , "option_combo" };
 
+    //Type Buffer
+    std::vector<std::string> typeBuffer{ "limit" , "stop_limit" , "take_limit" , "market" , "stop_market" , "take_market" , "market_limit" , "trailing_stop" };
+
     //JSON String (Which will be sent to Server)
     std::string jsonString{};
 
