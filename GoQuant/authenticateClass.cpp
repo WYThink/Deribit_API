@@ -1,5 +1,8 @@
 #include <iostream>
 #include <string>
+#include <iomanip>
+#include <algorithm>
+#include <string>
 #include <nlohmann/json.hpp>
 #include "authenticateClass.h"
 #include "curl/curl.h"
@@ -11,6 +14,98 @@ using json = nlohmann::json;
 size_t authenticateClass::WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
     userp->append((char*)contents, size * nmemb);
     return size * nmemb;
+}
+
+//Free CURL Headers
+void authenticateClass::freeCURLHeaders()
+{
+    if (headers)
+    {
+        // Free the headers list after the request
+        curl_slist_free_all(headers);
+        headers = nullptr;
+    }
+}
+
+//Fill Currency Buffer
+void authenticateClass::fillCurrencyBuffer()
+{
+    //CURL Status Code
+    CURLcode res;
+
+    //Read Buffer
+    std::string readBuffer{};
+
+    //JSON Object
+    json root;
+
+    //JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+    root["method"] = "/public/get_currencies";
+
+    //JSON to String
+    std::string jsonData = root.dump();
+
+    //CURL Header Setup
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    //Calling curlRequest()
+    curlRequest(&readBuffer, jsonData, "https://test.deribit.com/api/v2/public/get_currencies", &res);
+
+    if (res != CURLE_OK)
+    {
+        std::cerr << "curl_easy_perform() Failed" << curl_easy_strerror(res) << std::endl;
+    }
+    else
+    {
+        try
+        {
+            //Parsing JSON Type Response
+            json response = json::parse(readBuffer);
+
+            if (response.contains("result"))
+            {
+                for (const auto& item : response["result"])
+                {
+                    //Push Back Currency
+                    currencyBuffer.push_back(item["currency"].get<std::string>());
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << "Error : " << e.what() << '\n';
+        }
+    }
+
+    //calling freeCURLHeaders()
+    freeCURLHeaders();
+}
+
+//CURL Request
+void authenticateClass::curlRequest(std::string* readBuffer, const std::string& jsonString, const std::string& curlURL, CURLcode* res )
+{
+    try
+    {
+        //CURL Setup
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_URL, curlURL.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
+        
+        //CallBack Function
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, readBuffer);
+
+        //Perform Requeset
+        *res = curl_easy_perform(curl);
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Error : " << e.what() << '\n';
+    }
 }
 
 // Get Access Token From Server
@@ -26,46 +121,27 @@ void authenticateClass::getAccessTokenFromServer()
     json tmpObj;
 
     // Create JSON Payload
-    json root , params;
+    json root ;
 
     // JSON Payload
     root["jsonrpc"] = "2.0";
     root["id"] = 9940;
     root["method"] = "public/auth";
 
-    params["grant_type"] = "client_credentials";
-    params["client_id"] = *clientID;
-    params["client_secret"] = *clientSecret;
-    root["params"] = params;
+    root["params"] = {
+        {"grant_type" , "client_credentials" },
+        {"client_id" , *clientID} ,
+        {"client_secret" , *clientSecret }
+    };
 
     // JSON String
     jsonString = root.dump();
 
-    //try and catch block
-    try
-    {
-        // Headers
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        
-        // CURL Setup
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/auth");
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonString.c_str());
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-
-        //CallBack Function
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-
-        //Specifing Buffer
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-        // Perform the Request
-        res = curl_easy_perform(curl);
-    }
-    catch (std::exception e)
-    {
-        std::cout << "Error : " << e.what() << '\n';
-    }
+    // Headers
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    
+    //Calling curlRequest()
+    curlRequest(&readBuffer, jsonString, "https://test.deribit.com/api/v2/public/auth", &res);
 
     // Check for Errors
     if (res != CURLE_OK)
@@ -111,7 +187,7 @@ void authenticateClass::getAccessTokenFromServer()
 
         //Store & Print Access Token
         accessToken = tmpObj["result"]["access_token"].get<std::string>();
-        std::cout << "Access Token : " << accessToken << '\n';
+        //std::cout << "Access Token : " << accessToken << '\n';
 
         //Reset Feature
         if (headers)
@@ -126,6 +202,9 @@ void authenticateClass::getAccessTokenFromServer()
 //Get Instrument From API
 void authenticateClass::getInstrumentFromAPI()
 {
+    //User Input
+    std::string instrumentCodeInput{};
+
     //CURL Status Code
     CURLcode res;
 
@@ -145,11 +224,44 @@ void authenticateClass::getInstrumentFromAPI()
     root["jsonrpc"] = "2.0";
     root["id"] = 9940;
     root["method"] = "public/get_instruments";
-    
-    root["params"] = {
-        {"currency", "ETH"},
-        {"kind", "spot"}
-    };
+
+    //Display Currencies
+    std::cout << std::endl << "<------------------ Currencies ------------------>" << std::endl;
+    for (const auto& currency : currencyBuffer)
+    {
+        std::cout << "Name : " << currency.c_str() << std::endl;
+    }
+    std::cout << std::endl;
+
+    //Curreny Code Input
+    while (true)
+    {
+        //Input
+        std::cout << "Please enter the Instrument Code (e.g., ETHW, BTC), or type 'any' to see all available instrument codes : ";
+        std::getline(std::cin >> std::ws , instrumentCodeInput);
+
+        //Find inside the currencyBuffer
+        auto it = std::find(currencyBuffer.begin(), currencyBuffer.end(), instrumentCodeInput);
+
+        if (it != currencyBuffer.end())
+        {
+            root["params"] = {
+                {"currency",instrumentCodeInput.c_str()}
+            };
+            break;
+        }
+        else if (instrumentCodeInput == "any")
+        {
+            root["params"] = {
+                {"currency","any"}
+            };
+            break;
+        }
+        else
+        {
+            std::cout << "Invalid Input. Please Try Again" << std::endl;
+        }
+    }
 
     // Convert JSON to string
     std::string jsonData = root.dump();
@@ -159,19 +271,8 @@ void authenticateClass::getInstrumentFromAPI()
     std::string authoHeader = "Authorization: Bearer " + accessToken;
     headers = curl_slist_append(headers, authoHeader.c_str());
 
-    //CURL Field Setup
-    curl_easy_setopt(curl , CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl , CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_instruments");
-    curl_easy_setopt(curl , CURLOPT_POSTFIELDS, jsonData.c_str());
-    
-    //CallBack Function
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-
-    //Specifing Buffer
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    //Perform Operation
-    res = curl_easy_perform(curl);
+    //Calling curlRequest()
+    curlRequest(&readBuffer, jsonData, "https://test.deribit.com/api/v2/public/get_instruments", &res);
 
     if (res != CURLE_OK) {
         std::cerr << "curl_easy_perform() Failed: " << curl_easy_strerror(res) << std::endl;
@@ -181,43 +282,52 @@ void authenticateClass::getInstrumentFromAPI()
         json response = json::parse(readBuffer);
 
         // Check if 'result' is present in the response
-        if (response.contains("result")) {
-            std::cout << std::endl <<"<------------------ Instrument Name ------------------>" << std::endl;
-            for (const auto& instrument : response["result"]) {
+        if (response.contains("result"))
+        {
+            if (response["result"].empty())
+            {
+                std::cout << std::endl << "No Instruments Currently Available for " << instrumentCodeInput.c_str() << std::endl;
+                
+                //calling freeCURLHeaders()
+                freeCURLHeaders();
+                return;
+            }
+            std::cout << std::endl << "<------------------ Instrument Name ------------------>" << std::endl;
+            for (const auto& instrument : response["result"])
+            {
                 std::cout << "Instrument Name: " << instrument["instrument_name"] << std::endl;
             }
         }
-        else {
+        else
+        {
             std::cerr << "No result found in the response." << std::endl;
         }
     }
 
-    if (headers)
-    {
-        // Free the headers list after the request
-        curl_slist_free_all(headers);
-        headers = nullptr;
-    }
+    //Calling freeCURLHeaders()
+    freeCURLHeaders();
 }
 
 // Get Order Book
 void authenticateClass::getOrderBookFromAPI()
 {
+    //calling freeCURLHeaders()
+    freeCURLHeaders();
+    
     //CURL Status Code
     CURLcode res;
 
     //Read Buffer
     std::string readBuffer{};
 
-    //Reset Header
-    if (headers)
-    {
-        curl_slist_free_all(headers);
-        headers = nullptr;
-    }
-
     //JSON Object
     json root;
+
+    //Instrumental Name
+    std::string instrumentalName{};
+
+    std::cout << "Please enter the instrument name (e.g., BTC_EURR): ";
+    std::getline(std::cin >> std::ws, instrumentalName);
 
     //JSON Payload
     root["jsonrpc"] = "2.0";
@@ -225,7 +335,7 @@ void authenticateClass::getOrderBookFromAPI()
     root["method"] = "/public/get_order_book";
 
     root["params"] = {
-        {"instrument_name" , "BTC-PERPETUAL"},
+        {"instrument_name" , instrumentalName.c_str()},
         {"depth" , 5}
     };
 
@@ -237,19 +347,8 @@ void authenticateClass::getOrderBookFromAPI()
     std::string authHeader = "Authorization: Bearer " + accessToken;
     headers = curl_slist_append(headers, authHeader.c_str());
 
-    //CURL Field Setup
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_order_book");
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
-    
-    //CallBack Function
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-
-    //Specifing Buffer
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    //Perform Request
-    res = curl_easy_perform(curl);
+    //Calling curlRequest()
+    curlRequest(&readBuffer, jsonData, "https://test.deribit.com/api/v2/public/get_order_book", &res);
 
     if (res != CURLE_OK)
     {
@@ -267,14 +366,32 @@ void authenticateClass::getOrderBookFromAPI()
                 std::cout << std::endl << "<----------------- Bids ----------------->" << std::endl;
 
                 // Iterate over each bid in the "bids" array
-                for (const auto& bid : response["result"]["bids"]) {
+                for (const auto& bid : response["result"]["bids"]) 
+                {
                     if (bid.size() == 2) {
                         double price = bid[0];
                         double quantity = bid[1];
                         std::cout << "Price: " << price << "\t, Quantity: " << quantity << std::endl;
                     }
                 }
+                std::cout << std::endl;
+                std::cout << "Best Bid Price : " << response["result"]["best_bid_price"] << '\n';
+                std::cout << "Best Bid Amount : " << response["result"]["best_bid_amount"] << '\n';
+                std::cout << "Best Ask Price : " << response["result"]["best_ask_price"] << '\n';
+                std::cout << "Best Ask Amount : " << response["result"]["best_ask_amount"] << '\n';
+
             }
+
+            //Check if 'invalid instrument name' in the response
+            else if (response.contains("error"))
+            {
+                //Check for Error Code & Invalid Parameter Name
+                if (-32602 == response["error"]["code"].get<int>() && response["error"]["data"]["param"].get<std::string>() == "instrument_name")
+                {
+                    std::cout << "Invalid Instrument Name. Please try again" << std::endl;
+                }
+            }
+
             else {
                 std::cout << "'bids' not found in the response." << std::endl;
             }
@@ -285,13 +402,8 @@ void authenticateClass::getOrderBookFromAPI()
         }
     }
 
-    //Reset Headers
-    if (headers)
-    {
-        //Free the Header List
-        curl_slist_free_all(headers);
-        headers = nullptr;
-    }
+    //calling freeCURLHeaders()
+    freeCURLHeaders();
 }
 
 // Get Currencies
@@ -326,26 +438,8 @@ void authenticateClass::getCurrenciesFromAPI()
     std::string authHeader = "Authorization: Bearer " + accessToken;
     headers = curl_slist_append(headers, authHeader.c_str());
 
-    //CURL Field Setup
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_URL, "https://test.deribit.com/api/v2/public/get_currencies");
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
-
-    //CallBack Function
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    
-    //Specifing Buffer
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    try
-    {
-        //Perform Request
-        res = curl_easy_perform(curl);
-    }
-    catch (const std::exception& e)
-    {
-        std::cout << "Error : " << e.what() << '\n';
-    }
+    //Calling curlRequest()
+    curlRequest(&readBuffer, jsonData, "https://test.deribit.com/api/v2/public/get_currencies", &res);
 
     if (res != CURLE_OK)
     {
@@ -358,9 +452,6 @@ void authenticateClass::getCurrenciesFromAPI()
             //Parsing JSON Type Response
             json response = json::parse(readBuffer);
 
-            //Print Response
-            std::cout << response.dump(3) << std::endl;
-
             //Total Currencies
             int totalCurrency{};
 
@@ -369,13 +460,11 @@ void authenticateClass::getCurrenciesFromAPI()
                 std::cout << std::endl << "<----------------- Currencies ----------------->" << std::endl;
                 for (const auto& item : response["result"])
                 {
-                    std::cout << "Currency \t: " << item["currency"] << std::endl;
-                    std::cout << "Currency Long \t: " << item["currency_long"] << std::endl;
-                    std::cout << std::endl;
+                    std::cout << "Name : " << item["currency_long"].get<std::string>() 
+                        << ",(" << item["currency"].get<std::string>() << ")" << std::endl;
 
                     totalCurrency += 1;
                 }
-                std::cout << "Total Currency : " << totalCurrency << std::endl;
             }
         }
         catch (const std::exception& e)
@@ -384,14 +473,158 @@ void authenticateClass::getCurrenciesFromAPI()
         }
     }
 
-    //Reset Headers
-    if (headers)
-    {
-        //Free Headers List
-        curl_slist_free_all(headers);
-        headers = nullptr;
-    }
+    //calling freeCURLHeaders()
+    freeCURLHeaders();
 }
+
+// Buy Instrument
+void authenticateClass::buyOrderForInstrument()
+{
+    //CURL Status Code
+    CURLcode res;
+
+    //Read Buffer
+    std::string readBuffer{};
+
+    //JSON Object
+    json root;
+
+    //JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+    root["method"] = "/private/buy";
+
+    root["params"] = {
+        {"amount" , 5},
+        {"instrument_name" , "ETH-PERPETUAL"},
+        {"label" , "market0511"},
+        {"type" , "market"}
+    };
+
+    //JSON to String
+    std::string jsonString = root.dump();
+
+    //CURL Headers Setup
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    //Calling curlRequest()
+    curlRequest(&readBuffer, jsonString, "https://test.deribit.com/api/v2/private/buy", &res);
+
+    if (res != CURLE_OK)
+    {
+        std::cerr << "curl_easy_perform() Failed" << curl_easy_strerror(res) << std::endl;
+    }
+
+    else
+    {
+        json response = json::parse(readBuffer);
+
+        std::cout << "buyOrderForInstrument() Result" << std::endl;
+        //std::cout << response.dump(3) << '\n';
+    }
+
+    //calling freeCURLHeaders()
+    freeCURLHeaders();
+}
+
+//Get Current Positions
+void authenticateClass::getCurrentPositions()
+{
+    // CURL Status Code
+    CURLcode res;
+
+    // Read Buffer
+    std::string readBuffer;
+
+    // JSON Object for the request payload
+    json root;
+
+    //JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+    root["method"] = "/private/get_positions";
+
+    // Display Available Currencies
+    std::cout << "\n<------------------ Available Currencies ------------------>\n";
+    for (const auto& currency : currencyBuffer) {
+        std::cout << "Name: " << currency << std::endl;
+    }
+    std::cout << std::endl;
+
+    // Input: Currency and Kind Type
+    std::string currencyInput, kindInput;
+    while (true)
+    {
+        std::cout << "Enter Currency (or type 'any' to see all available options): ";
+        std::getline(std::cin >> std::ws, currencyInput);
+
+        std::cout << "Enter Kind Type (e.g., future, option, spot): ";
+        std::getline(std::cin >> std::ws, kindInput);
+
+        // Validate inputs
+        bool validCurrency = (std::find(currencyBuffer.begin(), currencyBuffer.end(), currencyInput) != currencyBuffer.end()) || (currencyInput == "any");
+        bool validKind = (std::find(kindBuffer.begin(), kindBuffer.end(), kindInput) != kindBuffer.end());
+
+        if (validCurrency && validKind) {
+            // Set JSON params
+            root["params"] = {
+                {"currency", currencyInput == "any" ? "any" : currencyInput.c_str()},
+                {"kind", kindInput.c_str()}
+            };
+            break;
+        }
+        else {
+            if (!validCurrency && currencyInput != "any") {
+                std::cout << "Invalid Currency. Please try again.\n";
+            }
+            if (!validKind) {
+                std::cout << "Invalid Kind Type. Please try again.\n";
+            }
+        }
+    }
+
+    // Convert JSON object to a string
+    std::string jsonString = root.dump();
+
+    // CURL Headers Setup
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    // Call curlRequest
+    curlRequest(&readBuffer, jsonString, "https://test.deribit.com/api/v2/private/get_positions", &res);
+
+    if (res != CURLE_OK) {
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+    }
+    else {
+        // Parse and handle response
+        json response = json::parse(readBuffer);
+
+        if (response.contains("error")) 
+        {
+            if (response["error"]["message"].get<std::string>() == "Invalid params")
+            {
+                std::cout << std::endl << "Error Message : " << response["error"]["message"].get<std::string>().c_str() << std::endl;
+                std::cout << "Error Reason : " << response["error"]["data"]["reason"].get<std::string>().c_str() << std::endl;
+                std::cout << std::endl << "Please Try Again" << std::endl;
+            }
+
+        }
+        else if (response.contains("result") && !response["result"].empty()) {
+            std::cout << "Positions:\n" << response["result"].dump(3) << '\n';
+        }
+        else {
+            std::cout << std::endl << "Currently No positions available." << std::endl;
+        }
+    }
+
+    // Free CURL Headers
+    freeCURLHeaders();
+}
+
 
 // Constructor
 authenticateClass::authenticateClass(CURL* obj , infoGather* sharedObj, const std::string* cliID, const std::string* cliSecret) :
@@ -400,8 +633,11 @@ authenticateClass::authenticateClass(CURL* obj , infoGather* sharedObj, const st
     clientID{ cliID },
     clientSecret{ cliSecret }
 {
-    // Calling getAccessTokenFromServer()
+    //Calling getAccessTokenFromServer()
     getAccessTokenFromServer();
+
+    //Calling fillCurrencyBuffer()
+    fillCurrencyBuffer();
 }
 
 // Destructor

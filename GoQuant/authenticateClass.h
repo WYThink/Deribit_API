@@ -10,13 +10,19 @@
 class authenticateClass
 {
 private:
-    // Client ID & Secret
+    //Client ID & Secret
     const std::string *clientID, *clientSecret;
 
-    // Authorization Header
+    //Authorization Header
     std::string authorizationHeader{};
 
-    // JSON String (Which will be sent to Server)
+    //Currency Buffer
+    std::vector<std::string> currencyBuffer{};
+
+    //Kind Buffer
+    std::vector<std::string> kindBuffer{ "future" , "option" , "spot" , "future_combo" , "option_combo" };
+
+    //JSON String (Which will be sent to Server)
     std::string jsonString{};
 
     //JSON Response (Which Will be Receivded from the Server)
@@ -35,25 +41,40 @@ private:
     infoGather* infoGatherSharedObject{NULL};
 
 public:
-    // Get Access Token From Server
+    //CURL Request
+    void curlRequest(std::string* readBuffer , const std::string& jsonString , const std::string& curlURL , CURLcode *res);
+
+    //Free CURL Headers
+    void freeCURLHeaders();
+
+    //Fill Currency Buffer
+    void fillCurrencyBuffer();
+
+    //Get Access Token From Server
     void getAccessTokenFromServer();
 
-    // Callback (make it static)
+    //Callback (make it static)
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp);
 
-    // Get Instrument
+    //Get Instrument
     void getInstrumentFromAPI();
 
-    // Get Order Book
+    //Get Order Book
     void getOrderBookFromAPI();
 
-    // Get Currencies
+    //Get Currencies
     void getCurrenciesFromAPI();
 
-    // Constructor
+    //Buy Instrument
+    void buyOrderForInstrument();
+
+    //Get Current Positions
+    void getCurrentPositions();
+
+    //Constructor
     authenticateClass(CURL* obj, infoGather* sharedObj, const std::string* cliID, const std::string* cliSecret);
 
-    // Destructor
+    //Destructor
     ~authenticateClass();
 };
 
