@@ -31,8 +31,3 @@ The project is organized into the following files:
 - [libcurl](https://curl.se/libcurl/) library
 - [nlohmann JSON](https://github.com/nlohmann/json) library
 
-### Clone the Repository
-
-```bash
-git clone YOUR_GITHUB_LINK_HERE
-cd Deribit-Trading-System
