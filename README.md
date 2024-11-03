@@ -27,7 +27,7 @@ The project is organized into the following files:
 
 ### Prerequisites
 
-- C++ compiler (e.g., GCC, Clang)
+- C++ compiler (e.g., G++, Clang)
 - [libcurl](https://curl.se/libcurl/) library
 - [nlohmann JSON](https://github.com/nlohmann/json) library
 
