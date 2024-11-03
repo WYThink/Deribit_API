@@ -74,6 +74,12 @@ public:
     //Get Current Positions
     void getCurrentPositions();
 
+    //Cancel An Order
+    void cancelAnOrder();
+
+    //Get Order State
+    bool getOpenOrder();
+
     //Constructor
     authenticateClass(CURL* obj, infoGather* sharedObj, const std::string* cliID, const std::string* cliSecret);
 

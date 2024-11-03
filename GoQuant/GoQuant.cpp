@@ -38,15 +38,16 @@ int main()
 			std::cout << "1) Display available currencies\n";
 			std::cout << "2) Display available instruments\n";
 			std::cout << "3) Place an order\n";
-			std::cout << "4) Show Bids\n";
-			std::cout << "5) View Current Positions\n";
-			std::cout << "6) Exit\n";
-			std::cout << "Enter your choice (1-6): ";
+			std::cout << "4) Cancel an Order\n";
+			std::cout << "5) Show Bids\n";
+			std::cout << "6) View Current Positions\n";
+			std::cout << "7) Exit\n";
+			std::cout << "Enter your choice (1-7): ";
 
 			std::cin >> choice;
 			if (std::cin.fail())
 			{
-				ignoreLine();
+				ignoreInvalidInput();
 				std::cout << "Invalid Input. Please Enter Again" << std::endl;
 			}
 
@@ -66,18 +67,22 @@ int main()
 					//Buy Instrument
 					obj2->buyOrderForInstrument();
 					break;
-
 				case 4:
+					//Cancel an Order
+					obj2->cancelAnOrder();
+					break;
+
+				case 5:
 					//Get Order Book
 					obj2->getOrderBookFromAPI();
 					break;
 				
-				case 5:
+				case 6:
 					//View Current Positions
 					obj2->getCurrentPositions();
 					break;
 
-				case 6:
+				case 7:
 					//Exit The Program
 					std::cout << "Exiting the system. Thank you!\n";
 					check = false;

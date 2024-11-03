@@ -7,7 +7,7 @@
 #include "authenticateClass.h"
 #include "curl/curl.h"
 
-void ignoreLine();
+void ignoreInvalidInput();
 
 // Alias
 using json = nlohmann::json;
@@ -192,12 +192,7 @@ void authenticateClass::getAccessTokenFromServer()
         //std::cout << "Access Token : " << accessToken << '\n';
 
         //Reset Feature
-        if (headers)
-        {
-            //Reset Headers
-            curl_slist_free_all(headers);
-            headers = nullptr;
-        }
+        freeCURLHeaders();
     }
 }
 
@@ -212,12 +207,6 @@ void authenticateClass::getInstrumentFromAPI()
 
     //Read Buffer
     std::string readBuffer{};
-
-    //Reset headers
-    if (headers)
-    {
-        curl_slist_free_all(headers);
-    }
 
     // Create JSON Payload
     json root;
@@ -492,13 +481,13 @@ void authenticateClass::buyOrderForInstrument()
     std::string instrumentNameInput{};
     std::cout << "Enter Instrument Name: ";
     std::getline(std::cin >> std::ws, instrumentNameInput);
-    if (std::cin.fail()) ignoreLine();
+    if (std::cin.fail()) ignoreInvalidInput();
 
     // Input Amount
     int amount{};
     std::cout << "Enter Amount: ";
     std::cin >> amount;
-    if (std::cin.fail()) ignoreLine();
+    if (std::cin.fail()) ignoreInvalidInput();
 
     std::cout << "\n<------------------ Input Type ------------------>\n";
 
@@ -512,7 +501,7 @@ void authenticateClass::buyOrderForInstrument()
     std::string typeInput{};
     std::cout << "Enter Type (e.g., future, option, spot): ";
     std::cin >> typeInput;
-    if (std::cin.fail()) ignoreLine();
+    if (std::cin.fail()) ignoreInvalidInput();
 
     // JSON Object
     json root;
@@ -547,7 +536,6 @@ void authenticateClass::buyOrderForInstrument()
     {
         // Convert Response to JSON Format
         json response = json::parse(readBuffer);
-        std::cout << "buyOrderForInstrument() Result" << std::endl;
 
         // Check for Errors
         if (response.contains("error")) {
@@ -566,6 +554,8 @@ void authenticateClass::buyOrderForInstrument()
             {
                 std::cout << "Error occurred while placing order. Please try again." << std::endl;
             }
+
+            //Free Headers
             freeCURLHeaders();
             return;
         }
@@ -575,6 +565,9 @@ void authenticateClass::buyOrderForInstrument()
             if (response["result"].contains("order") && response["result"]["order"]["order_state"] == "filled") 
             {
                 std::cout << "\nOrder was successful and filled." << std::endl;
+                std::cout << response["result"]["order"]["instrument_name"] << std::endl;
+                std::cout << response["result"]["order"]["order_id"] << std::endl;
+                std::cout << response["result"]["order"]["order_type"] << std::endl;
             }
             else 
             {
@@ -683,6 +676,151 @@ void authenticateClass::getCurrentPositions()
     // Free CURL Headers
     freeCURLHeaders();
 }
+
+//Get Open Orders
+bool authenticateClass::getOpenOrder()
+{
+    // CURL Status Code
+    CURLcode res;
+
+    // Read Buffer
+    std::string readBuffer{};
+
+    // JSON Object
+    json root;
+
+    // JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+    root["method"] = "/private/get_open_orders";
+    root["params"] = {};
+
+    // JSON to String
+    std::string jsonString{ root.dump() };
+
+    // CURL Headers Setup
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    // Calling curlRequest()
+    curlRequest(&readBuffer, jsonString, "https://test.deribit.com/api/v2", &res);
+
+    bool hasOpenOrders = false;
+
+    if (res != CURLE_OK)
+    {
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+    }
+    else
+    {
+        // Convert Response to JSON Format
+        json response = json::parse(readBuffer);
+
+        // Check if there are any open orders
+        if (response.contains("result") && !response["result"].empty())
+        {
+            hasOpenOrders = true;
+        }
+        else if (response.contains("error"))
+        {
+            std::cerr << "Error: " << response["error"].dump(3) << '\n';
+        }
+    }
+
+    // Free headers 
+    freeCURLHeaders();
+
+    // Return whether there are open orders
+    return hasOpenOrders;
+}
+
+//Sell Instrument
+void authenticateClass::cancelAnOrder()
+{
+    // Check For Orders; if "false" exit function
+    if (!getOpenOrder())
+    {
+        std::cout << std::endl << "No \"Open Orders\" to cancel.\n";
+        return;
+    }
+
+    // CURL Status Code
+    CURLcode res;
+
+    // Read Buffer
+    std::string readBuffer{}, orderIDInput{};
+
+    // JSON Object
+    json root;
+
+    // User Choice
+    int num{};
+
+    // JSON Payload
+    root["jsonrpc"] = "2.0";
+    root["id"] = 9940;
+
+    while (true)
+    {
+        std::cout << "You have open orders. Would you like to:\n";
+        std::cout << "1. Cancel all open orders\n";
+        std::cout << "2. Cancel a specific order by Order ID\n";
+        std::cout << "Enter your choice (1 or 2): ";
+        std::cin >> num;
+
+        if (std::cin.fail()) ignoreInvalidInput();
+
+        if (num == 1)
+        {
+            root["method"] = "/private/cancel_all";
+            break;
+        }
+        if (num == 2)
+        {
+            std::cout << "Enter Order ID: ";
+            std::cin >> orderIDInput;
+            if (std::cin.fail()) ignoreInvalidInput();
+
+            root["method"] = "/private/cancel";
+            root["params"] = { {"order_id", orderIDInput.c_str()} };
+            break;
+        }
+        else
+        {
+            std::cout << "Invalid input. Please enter 1 or 2.\n";
+        }
+    }
+
+    // Convert JSON to String
+    std::string jsonString = root.dump();
+
+    // CURL Headers Setup
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    // Calling curlRequest()
+    curlRequest(&readBuffer, jsonString, "https://test.deribit.com/api/v2", &res);
+
+    if (res != CURLE_OK)
+    {
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+    }
+    else
+    {
+        // Convert Response to JSON Format
+        json response = json::parse(readBuffer);
+
+        if (response.contains("result")) std::cout << "Response: " << response["result"].dump(3) << '\n';
+        else if (response.contains("error")) std::cout << "Error: " << response["error"].dump(3) << '\n';
+        else std::cout << "Unknown error occurred.\n";
+    }
+
+    // Free Headers
+    freeCURLHeaders();
+}
+
 
 
 // Constructor
