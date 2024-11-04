@@ -189,7 +189,6 @@ void authenticateClass::getAccessTokenFromServer()
 
         //Store & Print Access Token
         accessToken = tmpObj["result"]["access_token"].get<std::string>();
-        //std::cout << "Access Token : " << accessToken << '\n';
 
         //Reset Feature
         freeCURLHeaders();
